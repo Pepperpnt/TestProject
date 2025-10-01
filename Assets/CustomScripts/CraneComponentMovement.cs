@@ -1,0 +1,113 @@
+using System.Collections;
+using System.Collections.Generic;
+using Unity.XR.Oculus;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+public class CraneComponentMovement : MonoBehaviour
+{
+    [SerializeField] float maxVelocity = 10f;
+    [SerializeField] float AccelerationDuration = 3.0f;
+    [SerializeField] float DecelerationDuration = 3.0f;
+    [SerializeField] Vector3 MovementVector;
+    [SerializeField] Vector3 MovementLowerLimit;
+    [SerializeField] Vector3 MovementUpperLimit;
+    private float velocity = 0, currentVelocity;
+
+    private void Update()
+    {
+        StartMovement();
+    }
+
+    public void StartComponentMovement(bool reverse)
+    {
+        StopAllCoroutines();
+        StartCoroutine(StartAccelerating(reverse));
+    }
+
+    public void StopComponentMovement(bool reverse)
+    {
+        StopAllCoroutines();
+        StartCoroutine(StartDecelerating(reverse));
+    }
+
+    IEnumerator StartAccelerating(bool reverse)
+    {
+        currentVelocity = velocity;
+        float timeElapsed = Mathf.Abs(currentVelocity / maxVelocity);
+        while (Mathf.Abs(velocity) < maxVelocity)
+        {
+            SetVelocity(0, maxVelocity, AccelerationDuration, timeElapsed, reverse);
+            timeElapsed += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    IEnumerator StartDecelerating(bool reverse)
+    {
+        currentVelocity = velocity;
+        float timeElapsed = Mathf.Abs(currentVelocity / maxVelocity);
+        while (Mathf.Abs(velocity) > 0)
+        {
+            SetVelocity(maxVelocity, 0, DecelerationDuration, timeElapsed, reverse);
+            timeElapsed += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    private void StartMovement()
+    {
+        if (IsOverTheLimit() == 1)
+        {
+            velocity = 0;
+            transform.position = MovementUpperLimit;
+            StopAllCoroutines();
+        }
+        else
+        if (IsOverTheLimit() == -1)
+            {
+            velocity = 0;
+            transform.position = MovementLowerLimit;
+            StopAllCoroutines();
+            }
+        else
+        {
+            transform.position += MovementVector * velocity * Time.deltaTime;
+        }
+    }
+
+    private void SetVelocity(float LerpA, float LerpB, float Acceleration, float timeElapsed, bool reverse)
+    {
+        velocity = Mathf.Lerp(LerpA, LerpB, timeElapsed / Acceleration);
+        velocity = reverse ? velocity * -1 : velocity;
+    }
+
+    private int IsOverTheLimit()
+    {
+        if (GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) > GetVectorAxisValue(MovementLowerLimit, MovementVector)
+            & GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) < GetVectorAxisValue(MovementUpperLimit, MovementVector))
+            return 0;
+        else
+        if (GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) <= GetVectorAxisValue(MovementLowerLimit, MovementVector))
+            return -1;
+        //else
+        //if (GetVectorAxisValue(transform.position + MovementVector * velocity * Time.deltaTime, MovementVector) > GetVectorAxisValue(MovementUpperLimit, MovementVector))
+        //    return 1;
+        else
+            return 1;
+    }
+
+    private float GetVectorAxisValue(Vector3 vector, Vector3 axis)
+    {
+        /*Vector3 v = Vector3.Scale(vector, axis);
+        Debug.Log(v.magnitude);
+        return v.magnitude;*/
+        if (axis.x > 0)
+            return vector.x;
+        else
+        if (axis.y > 0)
+            return vector.y;
+        else
+            return vector.z;
+    }
+}
