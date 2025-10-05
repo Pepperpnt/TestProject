@@ -12,11 +12,11 @@ public class CraneComponentMovement : MonoBehaviour
     [SerializeField] Vector3 MovementVector;
     [SerializeField] Vector3 MovementLowerLimit;
     [SerializeField] Vector3 MovementUpperLimit;
-    private float velocity = 0, currentVelocity;
+    private float velocity = 0;
 
-    private void Update()
+    private void FixedUpdate()
     {
-        StartMovement();
+        MoveComponent();
     }
 
     public void StartComponentMovement(bool reverse)
@@ -33,11 +33,10 @@ public class CraneComponentMovement : MonoBehaviour
 
     IEnumerator StartAccelerating(bool reverse)
     {
-        currentVelocity = velocity;
-        float timeElapsed = Mathf.Abs(currentVelocity / maxVelocity);
+        float timeElapsed = Mathf.Abs(velocity / maxVelocity);
         while (Mathf.Abs(velocity) < maxVelocity)
         {
-            SetVelocity(0, maxVelocity, AccelerationDuration, timeElapsed, reverse);
+            velocity = SetVelocity(0, maxVelocity, AccelerationDuration, timeElapsed, reverse);
             timeElapsed += Time.deltaTime;
             yield return null;
         }
@@ -45,53 +44,53 @@ public class CraneComponentMovement : MonoBehaviour
 
     IEnumerator StartDecelerating(bool reverse)
     {
-        currentVelocity = velocity;
-        float timeElapsed = Mathf.Abs(currentVelocity / maxVelocity);
+        float timeElapsed = Mathf.Abs(velocity / maxVelocity);
         while (Mathf.Abs(velocity) > 0)
         {
-            SetVelocity(maxVelocity, 0, DecelerationDuration, timeElapsed, reverse);
+            velocity = SetVelocity(maxVelocity, 0, DecelerationDuration, timeElapsed, reverse);
             timeElapsed += Time.deltaTime;
             yield return null;
         }
     }
 
-    private void StartMovement()
+    private void MoveComponent()
     {
         if (IsOverTheLimit() == 1)
         {
             velocity = 0;
-            transform.position = MovementUpperLimit;
+            transform.localPosition = MovementUpperLimit;
             StopAllCoroutines();
         }
         else
         if (IsOverTheLimit() == -1)
             {
             velocity = 0;
-            transform.position = MovementLowerLimit;
+            transform.localPosition = MovementLowerLimit;
             StopAllCoroutines();
             }
         else
         {
-            transform.position += MovementVector * velocity * Time.deltaTime;
+            transform.localPosition += Time.deltaTime * velocity * MovementVector;
         }
     }
 
-    private void SetVelocity(float LerpA, float LerpB, float Acceleration, float timeElapsed, bool reverse)
+    private float SetVelocity(float LerpA, float LerpB, float Acceleration, float TimeElapsed, bool reverse)
     {
-        velocity = Mathf.Lerp(LerpA, LerpB, timeElapsed / Acceleration);
-        velocity = reverse ? velocity * -1 : velocity;
+        float v = Mathf.Lerp(LerpA, LerpB, TimeElapsed / Acceleration);
+        v = reverse ? v * -1 : v;
+        return v;
     }
 
     private int IsOverTheLimit()
     {
-        if (GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) > GetVectorAxisValue(MovementLowerLimit, MovementVector)
-            & GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) < GetVectorAxisValue(MovementUpperLimit, MovementVector))
+        if (GetVectorAxisValue(transform.localPosition + (Time.deltaTime * velocity * MovementVector), MovementVector) > GetVectorAxisValue(MovementLowerLimit, MovementVector)
+            & GetVectorAxisValue(transform.localPosition + (Time.deltaTime * velocity * MovementVector), MovementVector) < GetVectorAxisValue(MovementUpperLimit, MovementVector))
             return 0;
         else
-        if (GetVectorAxisValue(transform.position + (Time.deltaTime * velocity * MovementVector), MovementVector) <= GetVectorAxisValue(MovementLowerLimit, MovementVector))
+        if (GetVectorAxisValue(transform.localPosition + (Time.deltaTime * velocity * MovementVector), MovementVector) <= GetVectorAxisValue(MovementLowerLimit, MovementVector))
             return -1;
         //else
-        //if (GetVectorAxisValue(transform.position + MovementVector * velocity * Time.deltaTime, MovementVector) > GetVectorAxisValue(MovementUpperLimit, MovementVector))
+        //if (GetVectorAxisValue(transform.localPosition + MovementVector * velocity * Time.deltaTime, MovementVector) > GetVectorAxisValue(MovementUpperLimit, MovementVector))
         //    return 1;
         else
             return 1;

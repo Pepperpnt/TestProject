@@ -3,6 +3,7 @@
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
+using UnityEngine.UIElements;
 
 namespace HTC.UnityPlugin.Vive
 {
@@ -13,6 +14,8 @@ namespace HTC.UnityPlugin.Vive
 
 #pragma warning disable 0649
 
+        [SerializeField] private Vector3 m_startingPos;
+        [SerializeField] private Vector3 m_buttonAxis;
         [SerializeField] private float m_minHeight;
         [SerializeField] private float m_maxHeight;
 
@@ -30,7 +33,7 @@ namespace HTC.UnityPlugin.Vive
         private bool m_isRecovering;
         private bool m_isTriggerd;
 
-        private bool hasTriggeredAlternativeHeight
+        private bool HasTriggeredAlternativeHeight
         {
             get { return m_triggeredHeight > 0.0f; }
         }
@@ -44,7 +47,7 @@ namespace HTC.UnityPlugin.Vive
         protected virtual void FixedUpdate()
         {
             // Check if triggered
-            float percentage = Mathf.Clamp01((transform.localPosition.y - m_minHeight) / (m_maxHeight - m_minHeight));
+            float percentage = ClampPercentage();
             if (!m_isRecovering && percentage <= m_triggerThresholdHeight)
             {
                 InvokePushedEvent();
@@ -59,17 +62,22 @@ namespace HTC.UnityPlugin.Vive
             }
 
             // Recover
-            Vector3 position = transform.localPosition;
+            /*Vector3 position = transform.localPosition;
             position.y = transform.localPosition.y + (m_recoverSpeed * Time.deltaTime);
-            transform.localPosition = position;
+            transform.localPosition = position;*/
+            transform.localPosition = Recover();
+            transform.rotation = new Quaternion(0, 0, 0, 0);
         }
 
         protected virtual void LateUpdate()
         {
             // Lock position in local space except for clamped y
-            float maxHeight = m_isTriggerd && hasTriggeredAlternativeHeight ? m_maxHeight * m_triggeredHeight : m_maxHeight;
-            float clampedY = Mathf.Clamp(transform.localPosition.y, m_minHeight, maxHeight);
-            transform.localPosition = new Vector3(0.0f, clampedY, 0.0f);
+            float maxHeight = m_isTriggerd && HasTriggeredAlternativeHeight ? m_maxHeight * m_triggeredHeight : m_maxHeight;
+            float clampedAxis = ClampAxis(maxHeight);
+            transform.localPosition = m_buttonAxis.x > 0 ? new Vector3(clampedAxis, m_startingPos.y, m_startingPos.z) :
+                m_buttonAxis.y > 0 ? new Vector3(m_startingPos.x, clampedAxis, m_startingPos.z) :
+                m_buttonAxis.z > 0 ? new Vector3(m_startingPos.x, m_startingPos.y, clampedAxis) :
+                new Vector3(m_startingPos.x, m_startingPos.y, m_startingPos.z);
 
             // Lock velocity
             if (m_rigidbody)
@@ -96,6 +104,29 @@ namespace HTC.UnityPlugin.Vive
             {
                 released.Invoke();
             }
+        }
+
+        private Vector3 Recover()
+        {
+            Vector3 position = transform.localPosition;
+            position.x = m_buttonAxis.x > 0 ? transform.localPosition.x + (m_recoverSpeed * Time.deltaTime) : position.x;
+            position.y = m_buttonAxis.y > 0 ? transform.localPosition.y + (m_recoverSpeed * Time.deltaTime) : position.y;
+            position.z = m_buttonAxis.z > 0 ? transform.localPosition.z + (m_recoverSpeed * Time.deltaTime) : position.z;
+            return position;
+        }
+
+        private float ClampPercentage()
+        {
+            return m_buttonAxis.x > 0 ? Mathf.Clamp01((transform.localPosition.x - m_minHeight) / (m_maxHeight - m_minHeight)) : 
+                m_buttonAxis.y > 0 ? Mathf.Clamp01((transform.localPosition.y - m_minHeight) / (m_maxHeight - m_minHeight)) :
+                Mathf.Clamp01((transform.localPosition.z - m_minHeight) / (m_maxHeight - m_minHeight));
+        }
+
+        private float ClampAxis(float maxHeight)
+        {
+            return m_buttonAxis.x > 0 ? Mathf.Clamp(transform.localPosition.x, m_minHeight, maxHeight) :
+                m_buttonAxis.y > 0 ? Mathf.Clamp(transform.localPosition.y, m_minHeight, maxHeight) :
+                Mathf.Clamp(transform.localPosition.z, m_minHeight, maxHeight);
         }
     }
 }
